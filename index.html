@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LÁ CỜ VIỆT NAM</title>
+    <style>
+        
+        #flags {
+            width: 300px;
+            height: 200px;
+            background-color: #ff0000;
+            position: absolute;
+            top: 20%;
+            right: 20%;
+            transform: translate(-50%, -50%);
+        }
+        .start {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            background-color: #fdea02;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+        }
+        body {
+            background-color: #2e2e2e;
+        }
+        #container {
+            position: fixed;
+            left: 20%;
+            top: 20%;
+            transform: translate(-50%, -40%);
+            display: flex;
+        }
+        #pole {
+            width: 10px;
+            height: 350px;
+            border-radius: 50px;
+            background-color: rgb(70, 70, 70);
+            box-shadow: -5px 0 3px inset rgba(255, 255, 255, 0.3)
+        }
+        .flag-unit {
+            width: 5px;
+            height: 5px;
+            background: #d82d2d;
+            animation: vertical 1s infinite;
+            box-shadow: 5px 15px 10px rgba(255, 255, 255, 0.1);
+        }
+        #pole, .column {
+            transform-origin: bottom;
+            animation: sway 5s infinite;
+        }
+        #flag {
+            display: flex;
+        }
+        @keyframes vertical {
+            0%, 100% {
+                transform: translate(0, 0);
+            }
+            25% {
+                transform: translate(calc(var(--displacement)*-2), calc(var(--displacement)*-1));
+            }
+            75% {
+                transform: translate(calc(var(--displacement)*2), calc(var(--displacement)*4));
+            }
+        }
+        @keyframes sway {
+            0%, 100% {
+                transform: rotate(-5deg)
+            }
+            50% {
+                transform: rotate(-3deg)
+            }
+        }
+        .text {
+            position: absolute;
+            top: 95%; 
+            right: 50%;
+            transform: translate(50%,-50%);
+            text-transform: uppercase;
+            font-family: verdana;
+            font-size: 2em;
+            font-weight: 700;
+            color: #f5f5f5;
+            text-shadow: 1px 1px 1px #919191,
+                1px 2px 1px #919191,
+                1px 3px 1px #919191,
+                1px 4px 1px #919191,
+                1px 5px 1px #919191,
+                1px 6px 1px #919191,
+                1px 7px 1px #919191,
+                1px 8px 1px #919191,
+                1px 9px 1px #919191,
+                1px 10px 1px #919191,
+            1px 18px 6px rgba(16,16,16,0.4),
+            1px 22px 10px rgba(16,16,16,0.2),
+            1px 25px 35px rgba(16,16,16,0.2),
+            1px 30px 60px rgba(16,16,16,0.4);
+        }
+    </style>
+</head>
+<body>
+    <div id="flags">
+        <div class="start"></div>
+    </div>
+    <div id="container">
+        <span class="text">
+            Viet Nam
+        </span>
+        <div id="pole"></div>
+        <div id="flag"></div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
