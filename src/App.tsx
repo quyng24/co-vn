@@ -1,37 +1,33 @@
 import { useState } from 'react';
 import './App.css'
-import StartButton from './components/StartButton';
-import FlipCard from './components/FlipCard';
+import { wishes } from './store/data';
+import type { Card } from './types/type';
+import FanCard from './components/FanCard';
 
 function App() {
-  const wishes = [
-    "Chúc bạn code không bug 🚀",
-    "Lương tăng gấp đôi 💰",
-    "Pass mọi interview 🔥",
-    "Sức khỏe dồi dào 💪",
-    "Tình duyên nở rộ 🌸",
-    "Gia đình bình an ❤️",
-    "Năm mới thành công rực rỡ ✨",
-  ];
-  const [flipped, setFlipped] = useState(false);
-  const [message, setMessage] = useState("");
-  const handleStart = () => {
-    if (flipped) {
-      setFlipped(false);
+  const createCard = () =>
+    Array.from({ length: 5 }, () => ({ flipped: false, message: '' }));
+  const [cards, setCards] = useState<Card[]>(createCard());
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
+  const handleSelect = (index: number) => {
+    if (selectedIndex === index) {
+      setSelectedIndex(null);
       return;
     }
 
-    const random =
+    const newCards = [...cards];
+    newCards[index].message =
       wishes[Math.floor(Math.random() * wishes.length)];
 
-    setMessage(random);
-    setFlipped(true);
+    setCards(newCards);
+    setSelectedIndex(index);
   };
+
   return (
     <>
       <div className='w-full min-h-screen flex flex-col justify-center items-center gap-5 bg-linear-to-br from-pink-300 to-yellow-200'>
-        <FlipCard flipped={flipped} message={message} />
-        <StartButton onClick={handleStart} flipped={flipped} />
+        <FanCard cards={cards} selectedIndex={selectedIndex} onSelect={handleSelect} />
       </div>
     </>
   )
