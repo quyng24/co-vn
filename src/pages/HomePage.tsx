@@ -6,7 +6,7 @@ const HomePage = () => {
     const nav = useNavigate();
     return (
         <div className="w-full flex flex-col items-center justify-center">
-            <div className="w-[30%]">
+            <div className="w-full lg:w-[30%]">
                 <BaseCard 
                     title="Random Puzzle" 
                     image={ImgLixi} 
