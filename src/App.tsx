@@ -2,9 +2,10 @@ import { Route, Routes } from 'react-router-dom'
 import './App.css'
 import RandomPuzzle from './pages/RandomPuzzle'
 import HomePage from './pages/HomePage'
+import ShakeOracle from './pages/ShakeOracle'
 
 function App() {
-  
+
 
   return (
     <>
@@ -12,6 +13,7 @@ function App() {
         <Routes>
           <Route path='/' element={<HomePage />} />
           <Route path='/random-puzzle' element={<RandomPuzzle />} />
+          <Route path='/shake-oracle' element={<ShakeOracle />} />
         </Routes>
       </div>
     </>
