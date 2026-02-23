@@ -7,7 +7,7 @@ type Props = {
     onSelect: (index: number) => void;
 }
 
-export default function FanCard({cards = [], selectedIndex, onSelect}: Props) {
+export default function FanCard({ cards = [], selectedIndex, onSelect }: Props) {
     const count = cards.length;
     const middle = (count - 1) / 2;
     const spreadStep = 10;
@@ -15,7 +15,7 @@ export default function FanCard({cards = [], selectedIndex, onSelect}: Props) {
 
     return (
         <div
-            className="relative w-full max-w-5xl h-[clamp(300px,56vw,520px)] flex items-end justify-center px-2 sm:px-4"
+            className="relative w-full max-w-5xl h-[clamp(300px,56vw,520px)] flex items-end justify-center px-2 sm:px-4 z-30"
         >
             {cards.map((card, i) => {
                 const rotate = (i - middle) * spreadStep;

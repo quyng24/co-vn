@@ -13,7 +13,7 @@ export default function FlipCard({ flipped, message, style, onClick }: Props) {
     <div
       onClick={onClick}
       className={`
-        absolute perspective
+        absolute perspective z-30
       `}
       style={style}
     >
@@ -33,12 +33,12 @@ export default function FlipCard({ flipped, message, style, onClick }: Props) {
         `}
         >
           {/* Front */}
-          <div className="absolute inset-0 backface-hidden rounded-md bg-white border border-yellow-300 shadow-xl overflow-hidden flex items-center justify-center text-2xl">
+          <div className="absolute h-50 inset-0 backface-hidden bg-white border border-yellow-300 shadow-xl overflow-hidden flex items-center justify-center text-2xl">
             <img src={ImgLixi} alt="Images" className="w-full h-full bg-cover bg-center" />
           </div>
 
           {/* Back */}
-          <div className="absolute inset-0 rotate-y-180 backface-hidden rounded-md
+          <div className="absolute h-50 inset-0 rotate-y-180 backface-hidden
             bg-linear-to-br from-[#d41922] via-[#fb222d] to-[#b91c1c]
             border-4 border-double border-yellow-400
             shadow-[0_0_20px_rgba(251,34,45,0.4)]

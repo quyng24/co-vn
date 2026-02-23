@@ -1,1 +1,36 @@
 @import "tailwindcss";
+
+.background-main {
+    background-image: url('./assets/background-random-puzzle.png');
+    background-size: cover;
+    background-position: bottom;
+}
+
+.background-submain {
+    background-image: url('./assets/background-subtitle.png');
+    background-size: contain;
+    background-position: center;
+}
+
+.background-doi-trai {
+    background-image: url('./assets/cau-doi-trai.png');
+    background-size: contain;
+    background-position: center;
+}
+
+.background-doi-phai {
+    background-image: url('./assets/cau-doi-phai.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.background-logo {
+    background-image: url('./assets/background-logo.png');
+    background-size: cover;
+    background-position: center;
+}
+
+.wrappe-logo {
+    opacity: 0.4;
+}
