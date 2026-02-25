@@ -145,9 +145,10 @@ export default function ShakeOracle() {
     return (
         <div className="flex flex-col items-center justify-center text-amber-100 overflow-hidden relative font-serif">
             <div className="text-center z-10 mb-40">
-                <h1 className="text-xl font-semibold tracking-[0.25em] drop-shadow-[0_6px_20px_rgba(0,0,0,0.6)] text-transparent bg-clip-text bg-linear-to-b from-yellow-200 to-amber-500">
-                    Gieo quẻ đầu năm 2026
-                </h1>
+                <h2 className="text-md font-semibold tracking-[0.25em] drop-shadow-[0_6px_20px_rgba(0,0,0,0.6)] text-transparent bg-clip-text bg-linear-to-b from-yellow-200 to-amber-500">
+                    Gieo quẻ đầu năm
+                </h2>
+                <p className="text-lg font-semibold tracking-[0.25em] drop-shadow-[0_6px_20px_rgba(0,0,0,0.6)] text-transparent bg-clip-text bg-linear-to-b from-yellow-200 to-amber-500">2026</p>
             </div>
 
             {/* 3D SCENE */}
