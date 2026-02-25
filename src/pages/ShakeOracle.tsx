@@ -1,13 +1,26 @@
+// src/pages/ShakeOracle.tsx (hoặc bất kỳ đường dẫn nào bạn dùng)
+
 import { useState, useRef, useCallback, useEffect } from "react";
 import { IoRefreshOutline } from "react-icons/io5";
-import { wishes } from "../store/data";
+
+export const wishes = [
+    "Năm mới chính trực, tinh thần thép, vạn sự như ý.",
+    "Chúc sức khỏe dẻo dai, tấn pháp vững vàng.",
+    "Khí thế hiên ngang, bách chiến bách thắng.",
+    "Võ công thăng tiến, bản lĩnh kiên cường.",
+    "Giữ lửa đam mê, kỷ luật bền tâm.",
+    "Thân rắn rỏi, tâm nhân hậu đúng chất võ sĩ.",
+    "Vượt giới hạn, mỗi ngày thắng chính mình.",
+    "Học võ khỏe thân, luyện tâm bình an.",
+    "Vững vàng trước sóng gió, như khi đứng tấn.",
+    "Đòn chuẩn xác, ý chí bền bỉ, thành công rực rỡ.",
+];
 
 export default function ShakeOracle() {
     const [result, setResult] = useState<string | null>(null);
     const [isListening, setIsListening] = useState(false);
     const [isAnimating, setIsAnimating] = useState(false);
     const [selectedStick, setSelectedStick] = useState<number | null>(null);
-    const [shakeIntensity, setShakeIntensity] = useState(0); // 0 → 1
 
     const tubeRef = useRef<HTMLDivElement>(null);
     const sticksRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -28,29 +41,29 @@ export default function ShakeOracle() {
             const { x, y, z } = acc;
             const total = Math.sqrt(x * x + y * y + z * z);
 
+            // Low-pass filter
             accelHistory.current.push(total);
             if (accelHistory.current.length > 8) accelHistory.current.shift();
 
             const avg = accelHistory.current.reduce((a, b) => a + b, 0) / accelHistory.current.length;
             const delta = Math.abs(total - avg);
 
+            // Cập nhật góc nghiêng
             targetRotation.current = {
                 x: (y - 5) * 2.2,
                 y: x * 2.8,
             };
 
-            const intensity = Math.min(delta / 12, 1.4);
-            setShakeIntensity((prev) => prev * 0.7 + intensity * 0.3);
-
+            // Rung que tự nhiên
             sticksRefs.current.forEach((stick, i) => {
                 if (!stick) return;
                 const phase = Date.now() / 80 + i * 1.6;
-                const vibrate = Math.sin(phase) * 6 * intensity;
-                const sway = Math.sin(phase * 0.7) * 3 * intensity;
+                const vibrate = Math.sin(phase) * 6 * (delta / 12);
+                const sway = Math.sin(phase * 0.7) * 3 * (delta / 12);
 
                 stick.style.transform = `
           translateZ(${i * 1.8}px)
-          rotate(${(i - 6) * 3.5}deg)
+          rotate(${(i - 5.5) * 4}deg)
           translateY(${vibrate}px)
           translateX(${sway}px)
         `;
@@ -61,7 +74,7 @@ export default function ShakeOracle() {
                 lastShakeTime.current = now;
                 setIsAnimating(true);
 
-                const chosenIndex = Math.floor(Math.random() * 12); // 0-11
+                const chosenIndex = Math.floor(Math.random() * 12);
                 setSelectedStick(chosenIndex);
 
                 setTimeout(() => {
@@ -91,7 +104,9 @@ export default function ShakeOracle() {
 
     const requestPermission = async () => {
         try {
-            const DeviceMotion = DeviceMotionEvent as unknown as { requestPermission?: () => Promise<"granted" | "denied"> };
+            const DeviceMotion = DeviceMotionEvent as unknown as {
+                requestPermission?: () => Promise<"granted" | "denied">;
+            };
             if (typeof DeviceMotion.requestPermission === "function") {
                 const permission = await DeviceMotion.requestPermission();
                 if (permission !== "granted") {
@@ -104,7 +119,6 @@ export default function ShakeOracle() {
             window.addEventListener("devicemotion", handleMotion);
             rafRef.current = requestAnimationFrame(animate);
             setIsListening(true);
-            setShakeIntensity(0);
         } catch (err) {
             alert("Trình duyệt không hỗ trợ hoặc bị từ chối quyền cảm biến.");
         }
@@ -117,7 +131,6 @@ export default function ShakeOracle() {
         setIsAnimating(false);
         setSelectedStick(null);
         setResult(null);
-        setShakeIntensity(0);
         accelHistory.current = [];
         lastShakeTime.current = 0;
     }, [handleMotion]);
@@ -149,7 +162,9 @@ export default function ShakeOracle() {
                         {[...Array(12)].map((_, i) => (
                             <div
                                 key={i}
-                                ref={(el) => (sticksRefs.current[i] = el)}
+                                ref={(el) => {
+                                    sticksRefs.current[i] = el;
+                                }}
                                 className={`absolute w-5 h-64 rounded-t-full border-x border-amber-900/40 shadow-xl transition-all duration-100
                   ${selectedStick === i ? "animate-stick-out z-50 bg-linear-to-b! from-red-100 to-red-600" : "bg-linear-to-b from-amber-100 to-orange-300"}
                 `}
