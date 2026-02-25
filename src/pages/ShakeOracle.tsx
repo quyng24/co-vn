@@ -1,152 +1,181 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { IoRefreshOutline } from "react-icons/io5";
-
-interface DeviceMotionEventWithPermission extends DeviceMotionEvent {
-    requestPermission?: () => Promise<"granted" | "denied">;
-}
-
-const hexagrams = [
-    { title: "ĐẠI CÁT", desc: "Vạn sự hanh thông, hỷ sự lâm môn." },
-    { title: "TRUNG BÌNH", desc: "An nhiên tự tại, giữ vững tâm thế." },
-    { title: "TÀI LỘC", desc: "Tiền bạc rủng rỉnh, lộc lá đầy nhà." },
-    { title: "TÌNH DUYÊN", desc: "Duyên lành chớm nở, hạnh phúc bền lâu." },
-    { title: "CÔNG DANH", desc: "Sự nghiệp thăng tiến, bảng vàng danh giá." },
-    { title: "BÌNH AN", desc: "Thân tâm an lạc, tai qua nạn khỏi." },
-];
+import { wishes } from "../store/data";
 
 export default function ShakeOracle() {
-    const [result, setResult] = useState<{ title: string; desc: string } | null>(null);
+    const [result, setResult] = useState<string | null>(null);
     const [isListening, setIsListening] = useState(false);
     const [isAnimating, setIsAnimating] = useState(false);
     const [selectedStick, setSelectedStick] = useState<number | null>(null);
+    const [shakeIntensity, setShakeIntensity] = useState(0); // 0 → 1
 
     const tubeRef = useRef<HTMLDivElement>(null);
     const sticksRefs = useRef<(HTMLDivElement | null)[]>([]);
-    const lastShake = useRef(0);
-    const baseline = useRef(0);
-    const warmUp = useRef(true);
+    const lastShakeTime = useRef(0);
+    const accelHistory = useRef<number[]>([]);
+    const rafRef = useRef<number | null>(null);
+
     const rotation = useRef({ x: 0, y: 0 });
     const targetRotation = useRef({ x: 0, y: 0 });
-    const raf = useRef<number | null>(null);
+
+    const handleMotion = useCallback(
+        (event: DeviceMotionEvent) => {
+            if (isAnimating) return;
+
+            const acc = event.accelerationIncludingGravity;
+            if (!acc?.x || !acc?.y || !acc?.z) return;
+
+            const { x, y, z } = acc;
+            const total = Math.sqrt(x * x + y * y + z * z);
+
+            accelHistory.current.push(total);
+            if (accelHistory.current.length > 8) accelHistory.current.shift();
+
+            const avg = accelHistory.current.reduce((a, b) => a + b, 0) / accelHistory.current.length;
+            const delta = Math.abs(total - avg);
+
+            targetRotation.current = {
+                x: (y - 5) * 2.2,
+                y: x * 2.8,
+            };
+
+            const intensity = Math.min(delta / 12, 1.4);
+            setShakeIntensity((prev) => prev * 0.7 + intensity * 0.3);
+
+            sticksRefs.current.forEach((stick, i) => {
+                if (!stick) return;
+                const phase = Date.now() / 80 + i * 1.6;
+                const vibrate = Math.sin(phase) * 6 * intensity;
+                const sway = Math.sin(phase * 0.7) * 3 * intensity;
+
+                stick.style.transform = `
+          translateZ(${i * 1.8}px)
+          rotate(${(i - 6) * 3.5}deg)
+          translateY(${vibrate}px)
+          translateX(${sway}px)
+        `;
+            });
+
+            const now = Date.now();
+            if (delta > 13 && now - lastShakeTime.current > 2800) {
+                lastShakeTime.current = now;
+                setIsAnimating(true);
+
+                const chosenIndex = Math.floor(Math.random() * 12); // 0-11
+                setSelectedStick(chosenIndex);
+
+                setTimeout(() => {
+                    const wish = wishes[Math.floor(Math.random() * wishes.length)];
+                    setResult(wish);
+                    setIsListening(false);
+                }, 2200);
+            }
+        },
+        [isAnimating]
+    );
 
     const animate = useCallback(() => {
-        rotation.current.x += (targetRotation.current.x - rotation.current.x) * 0.1;
-        rotation.current.y += (targetRotation.current.y - rotation.current.y) * 0.1;
+        rotation.current.x += (targetRotation.current.x - rotation.current.x) * 0.14;
+        rotation.current.y += (targetRotation.current.y - rotation.current.y) * 0.14;
 
         if (tubeRef.current) {
-            tubeRef.current.style.transform = `rotateX(${15 + rotation.current.x}deg) rotateY(${rotation.current.y}deg)`;
+            tubeRef.current.style.transform = `
+        rotateX(${12 + rotation.current.x}deg)
+        rotateY(${rotation.current.y}deg)
+        translateZ(0)
+      `;
         }
-        raf.current = requestAnimationFrame(animate);
+
+        rafRef.current = requestAnimationFrame(animate);
     }, []);
-
-    const stopListening = useCallback(() => {
-        window.removeEventListener("devicemotion", handleMotion);
-        if (raf.current) cancelAnimationFrame(raf.current);
-        setIsListening(false);
-        warmUp.current = true;
-        setIsAnimating(false);
-        setSelectedStick(null);
-        setResult(null);
-    }, []);
-
-    const handleMotion = useCallback((event: DeviceMotionEvent) => {
-        if (isAnimating) return;
-        const acc = event.accelerationIncludingGravity;
-        if (!acc) return;
-
-        const x = acc.x ?? 0;
-        const y = acc.y ?? 0;
-        const z = acc.z ?? 0;
-        const total = Math.sqrt(x * x + y * y + z * z);
-
-        if (warmUp.current) {
-            baseline.current = total;
-            warmUp.current = false;
-            return;
-        }
-
-        const delta = Math.abs(total - baseline.current);
-        targetRotation.current = { x: (y - 5) * 3, y: x * 3 };
-
-        // Rung lắc tự nhiên cho các thẻ quẻ
-        sticksRefs.current.forEach((stick, i) => {
-            if (!stick) return;
-            const intensity = Math.min(delta / 15, 1.5);
-            const vibrate = Math.sin(Date.now() / 50 + i) * 8 * intensity;
-            stick.style.transform = `translateZ(${i * 2}px) rotate(${(i - 6) * 4}deg) translateY(${vibrate}px)`;
-        });
-
-        const now = Date.now();
-        if (delta > 22 && now - lastShake.current > 3000) {
-            lastShake.current = now;
-            setIsAnimating(true);
-            const index = Math.floor(Math.random() * 12);
-            setSelectedStick(index);
-
-            setTimeout(() => {
-                setResult(hexagrams[Math.floor(Math.random() * hexagrams.length)]);
-                setIsListening(false);
-            }, 2000);
-        }
-    }, [isAnimating]);
 
     const requestPermission = async () => {
         try {
-            const DeviceMotion = DeviceMotionEvent as unknown as DeviceMotionEventWithPermission;
+            const DeviceMotion = DeviceMotionEvent as unknown as { requestPermission?: () => Promise<"granted" | "denied"> };
             if (typeof DeviceMotion.requestPermission === "function") {
                 const permission = await DeviceMotion.requestPermission();
-                if (permission !== "granted") return;
+                if (permission !== "granted") {
+                    alert("Cần quyền truy cập cảm biến chuyển động.");
+                    return;
+                }
             }
+
+            accelHistory.current = [];
             window.addEventListener("devicemotion", handleMotion);
-            raf.current = requestAnimationFrame(animate);
+            rafRef.current = requestAnimationFrame(animate);
             setIsListening(true);
-        } catch {
-            alert("Trình duyệt không hỗ trợ cảm biến chuyển động.");
+            setShakeIntensity(0);
+        } catch (err) {
+            alert("Trình duyệt không hỗ trợ hoặc bị từ chối quyền cảm biến.");
         }
     };
 
+    const stopAndReset = useCallback(() => {
+        window.removeEventListener("devicemotion", handleMotion);
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        setIsListening(false);
+        setIsAnimating(false);
+        setSelectedStick(null);
+        setResult(null);
+        setShakeIntensity(0);
+        accelHistory.current = [];
+        lastShakeTime.current = 0;
+    }, [handleMotion]);
+
+    useEffect(() => {
+        return () => {
+            if (rafRef.current) cancelAnimationFrame(rafRef.current);
+            window.removeEventListener("devicemotion", handleMotion);
+        };
+    }, [handleMotion]);
+
     return (
         <div className="flex flex-col items-center justify-center text-amber-100 overflow-hidden relative font-serif">
-            <div className="text-center z-10 mb-32">
-                <h1 className="text-lg font-semibold tracking-[0.2em] drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)] mb-2 text-transparent bg-clip-text bg-linear-to-b from-yellow-200 to-amber-500">
-                    LINH VẬT CHIÊM QUẺ
+            <div className="text-center z-10 mb-40">
+                <h1 className="text-xl font-semibold tracking-[0.25em] drop-shadow-[0_6px_20px_rgba(0,0,0,0.6)] text-transparent bg-clip-text bg-linear-to-b from-yellow-200 to-amber-500">
+                    Gieo quẻ đầu năm 2026
                 </h1>
             </div>
 
             {/* 3D SCENE */}
-            <div className="relative w-48 h-52 flex items-center justify-center" style={{ perspective: "1500px" }}>
-                <div ref={tubeRef} className="relative w-40 h-64 transition-transform duration-150 ease-out" style={{ transformStyle: "preserve-3d" }}>
-
-                    {/* Sticks Container */}
-                    <div className="absolute inset-x-0 -top-24 flex justify-center" style={{ transformStyle: "preserve-3d" }}>
-                        {[...Array(13)].map((_, i) => (
+            <div className="relative w-56 h-64 flex items-center justify-center" style={{ perspective: "1800px" }}>
+                <div
+                    ref={tubeRef}
+                    className="relative w-44 h-72 transition-transform duration-80 ease-out"
+                    style={{ transformStyle: "preserve-3d" }}
+                >
+                    {/* Sticks */}
+                    <div className="absolute inset-x-0 -top-28 flex justify-center" style={{ transformStyle: "preserve-3d" }}>
+                        {[...Array(12)].map((_, i) => (
                             <div
                                 key={i}
-                                ref={(el) => { sticksRefs.current[i] = el; }}
-                                className={`absolute w-4 h-60 rounded-t-full border-x border-amber-900/30 shadow-lg transition-all
-                  ${selectedStick === i ? "animate-stick-out z-50" : "bg-linear-to-b from-amber-200 to-orange-300"}
+                                ref={(el) => (sticksRefs.current[i] = el)}
+                                className={`absolute w-5 h-64 rounded-t-full border-x border-amber-900/40 shadow-xl transition-all duration-100
+                  ${selectedStick === i ? "animate-stick-out z-50 bg-linear-to-b! from-red-100 to-red-600" : "bg-linear-to-b from-amber-100 to-orange-300"}
                 `}
                                 style={{
                                     transformOrigin: "bottom center",
-                                    transform: `translateZ(${i * 2}px) rotate(${(i - 6) * 4}deg)`,
-                                    boxShadow: "inset 1px 0 2px rgba(255,255,255,0.3), 2px 5px 10px rgba(0,0,0,0.3)"
+                                    transform: `translateZ(${i * 2}px) rotate(${(i - 5.5) * 4}deg)`,
+                                    boxShadow: "inset 1px 0 4px rgba(255,255,255,0.4), 3px 8px 16px rgba(0,0,0,0.4)",
                                 }}
                             >
-                                <div className="w-full h-8 bg-red-700 rounded-t-full mt-1 flex items-center justify-center text-[8px] text-amber-200 font-bold">福</div>
+                                <div className="w-full h-9 bg-red-800 rounded-t-full mt-1 flex items-center justify-center text-xs text-amber-100 font-bold tracking-wide">
+                                    福
+                                </div>
                             </div>
                         ))}
                     </div>
 
-                    {/* Bamboo Tube (Ống Tre) */}
-                    <div className="absolute inset-0 bg-linear-to-r from-[#4a3022] via-[#8b5a2b] to-[#4a3022] rounded-b-[40px] rounded-t-xl border-x-4 border-yellow-800/50 shadow-2xl" style={{ transform: "translateZ(30px)" }}>
-                        {/* Họa tiết trên ống */}
-                        <div className="absolute inset-0 flex items-center justify-center opacity-20">
-                            <div className="w-24 h-24 border-4 border-amber-200 rotate-45 flex items-center justify-center">
-                                <span className="text-4xl -rotate-45 font-bold">吉</span>
+                    {/* Ống tre */}
+                    <div
+                        className="absolute inset-0 bg-linear-to-r from-[#3d251a] via-[#7a4a1f] to-[#3d251a] rounded-b-[50px] rounded-t-2xl border-x-4 border-yellow-800/60 shadow-2xl"
+                        style={{ transform: "translateZ(40px)" }}
+                    >
+                        <div className="absolute inset-0 opacity-15 flex items-center justify-center">
+                            <div className="w-28 h-28 border-4 border-amber-200/70 rotate-45 flex items-center justify-center">
+                                <span className="text-5xl -rotate-45 font-black text-amber-100/80">吉</span>
                             </div>
                         </div>
-                        <div className="absolute bottom-4 inset-x-0 h-1 bg-black/20" />
-                        <div className="absolute bottom-8 inset-x-0 h-1 bg-black/20" />
                     </div>
                 </div>
             </div>
@@ -154,56 +183,74 @@ export default function ShakeOracle() {
             {!isListening ? (
                 <button
                     onClick={requestPermission}
-                    className="mt-10 group relative px-8 py-2 bg-linear-to-b from-amber-300 to-amber-600 text-red-950 font-black rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.4)] hover:shadow-yellow-500/40 transition-all active:scale-95 overflow-hidden"
+                    className="mt-12 group relative px-10 py-3 bg-linear-to-b from-amber-400 to-amber-700 text-red-950 font-black rounded-2xl shadow-2xl hover:shadow-yellow-500/50 transition-all active:scale-95"
                 >
-                    <span className="relative z-10 text-base tracking-[0.3em]">GIEO QUẺ NGAY</span>
-                    <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity" />
+                    <span className="relative z-10 text-lg tracking-wider">GIEO QUẺ NGAY</span>
+                    <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-25 rounded-2xl transition-opacity" />
                 </button>
             ) : (
-                <div className="mt-16 flex flex-col items-center gap-4">
-                    <div className="flex gap-2">
-                        {[1, 2, 3].map(i => <div key={i} className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.2}s` }} />)}
+                <div className="mt-20 flex flex-col items-center gap-5">
+                    <div className="flex gap-3">
+                        {[1, 2, 3].map((i) => (
+                            <div
+                                key={i}
+                                className="w-3 h-3 bg-amber-300 rounded-full animate-bounce"
+                                style={{ animationDelay: `${i * 0.18}s` }}
+                            />
+                        ))}
                     </div>
-                    <p className="text-amber-200/80 animate-pulse tracking-widest uppercase text-sm font-light">Hãy lắc mạnh thiết bị của bạn</p>
+                    <p className="text-amber-200/90 animate-pulse tracking-widest uppercase text-base font-light">
+                        Lắc mạnh thiết bị để bốc quẻ...
+                    </p>
                 </div>
             )}
 
-            {/* RESULT MODAL */}
+            {/* Kết quả */}
             {result && (
-                <div className="fixed inset-0 z-100 flex items-center justify-center p-6 bg-black/80 backdrop-blur-md animate-fade-in">
-                    <div className="relative max-w-sm w-full bg-linear-to-b from-amber-50 to-amber-200 p-1 rounded-2xl shadow-[0_0_100px_rgba(255,191,0,0.5)]">
-                        <div className="bg-white/50 border-4 border-red-800 rounded-xl px-8 py-12 text-center flex flex-col items-center">
-                            <div className="w-16 h-1 bg-red-800 mb-6" />
-                            <h2 className="text-red-800 text-5xl font-black mb-4 tracking-tighter">{result.title}</h2>
-                            <p className="text-red-900/80 text-lg leading-relaxed mb-10 font-medium italic">"{result.desc}"</p>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/75 backdrop-blur-lg animate-fade-in">
+                    <div className="relative max-w-md w-full bg-linear-to-b from-amber-50 to-amber-300 p-1.5 rounded-3xl shadow-[0_0_120px_rgba(255,200,0,0.6)]">
+                        <div className="bg-white/60 border-4 border-red-900 rounded-2xl px-10 py-14 text-center flex flex-col items-center">
+                            <div className="w-20 h-1.5 bg-red-900 mb-8 rounded" />
+                            <p className="text-red-950 text-xl leading-relaxed mb-12 font-medium italic">"{result}"</p>
                             <button
-                                onClick={stopListening}
-                                className="flex items-center gap-2 bg-red-800 text-amber-100 px-8 py-3 rounded-full font-bold hover:bg-red-700 transition-colors shadow-lg"
+                                onClick={stopAndReset}
+                                className="flex items-center gap-3 bg-red-900 text-amber-100 px-10 py-4 rounded-full font-bold hover:bg-red-800 transition-all shadow-xl active:scale-95"
                             >
-                                <IoRefreshOutline size={20} /> TIẾP TỤC
+                                <IoRefreshOutline size={22} /> GIEO LẠI
                             </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            <style>{`
+            <style >{`
         @keyframes stick-out {
-          0% { transform: translateZ(20px) translateY(0) rotateX(0); }
-          50% { transform: translateZ(100px) translateY(-350px) rotateX(20deg) scale(1.2); }
-          100% { transform: translateZ(150px) translateY(-300px) rotateX(360deg) scale(1.1); }
+          0% {
+            transform: translateZ(30px) translateY(0) rotateX(0) scale(1);
+          }
+          40% {
+            transform: translateZ(140px) translateY(-280px) rotateX(30deg) scale(1.15);
+          }
+          100% {
+            transform: translateZ(220px) translateY(-340px) rotateX(380deg) scale(1.08);
+          }
         }
         .animate-stick-out {
-          animation: stick-out 2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-          background: linear-gradient(to bottom, #fee2e2, #ef4444) !important;
-          box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+          animation: stick-out 2.3s cubic-bezier(0.25, 0.8, 0.3, 1.2) forwards;
+          box-shadow: 0 30px 60px rgba(0,0,0,0.6) !important;
         }
         @keyframes fade-in {
-          from { opacity: 0; transform: scale(0.9); }
-          to { opacity: 1; transform: scale(1); }
+          from {
+            opacity: 0;
+            transform: scale(0.85);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
         }
         .animate-fade-in {
-          animation: fade-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          animation: fade-in 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
         }
       `}</style>
         </div>
